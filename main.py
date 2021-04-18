@@ -1,6 +1,6 @@
 from fastapi import FastAPI, status, Response, Request
 import datetime, hashlib
-
+from typing import Optional
 app = FastAPI()
 app.counter = 0
 app.data = dict()
@@ -36,12 +36,17 @@ def root(request: Request):
     return {"method": f"{method}"}
 
 @app.get("/auth", status_code=401)
-def root(password: str, password_hash: str, response: Response):
+def root(response: Response, password: Optional[str] = "", password_hash: Optional[str] = ""):
     m = hashlib.sha512()
+
+    if password == "" or password_hash == "":
+        response.status_code = 401
+        return
+
     m.update(bytes(f"{password}", encoding="utf-8"))
 
     if password_hash == m.hexdigest():
-        response.status_code = status.HTTP_204_NO_CONTENT
+        response.status_code = 204
         return
     else:
         return
@@ -54,9 +59,10 @@ def root(json_all: dict, response: Response):
     if name is None or surname is None:
         response.status_code = 422
         return
+
     app.counter += 1
     start_date = datetime.datetime.today()
-    end_date = start_date + datetime.timedelta(days=(len(name) + len(surname)))
+    end_date = start_date + datetime.timedelta(days=sum(map(str.isalpha, str(name + surname))))
     start_date = start_date.strftime('%Y-%m-%d')
     end_date = end_date.strftime('%Y-%m-%d')
     json_new = {"id": app.counter, "name": name,
