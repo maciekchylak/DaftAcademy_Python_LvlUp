@@ -1,83 +1,86 @@
-from fastapi import FastAPI, status, Response, Request
-import datetime, hashlib
+from datetime import datetime
+
+from fastapi import FastAPI, Response, Request, Depends, HTTPException, Cookie
+from fastapi.responses import HTMLResponse, PlainTextResponse, JSONResponse, RedirectResponse
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from typing import Optional
+
+
+
 app = FastAPI()
-app.counter = 0
-app.data = dict()
+app.token1 = []
+app.token2 = []
 
-@app.get("/")
-def root():
-    return {"message": "Hello world!"}
+security = HTTPBasic()
 
 
-@app.get("/method")
-def root(request: Request):
-    method = request.method
-    return {"method": f"{method}"}
+@app.get("/hello", response_class=HTMLResponse)
+def hello():
+    return f'<h1>Hello! Today date is {str(datetime.today().strftime("%Y-%m-%d"))} </h1>'
 
-@app.put("/method")
-def root(request: Request):
-    method = request.method
-    return {"method": f"{method}"}
 
-@app.options("/method")
-def root(request: Request):
-    method = request.method
-    return {"method": f"{method}"}
+@app.post("/login_session", status_code=201)
+def login_session(*, response: Response, credentials: HTTPBasicCredentials = Depends(security)):
+    if not (credentials.username == '4dm1n' and credentials.password == 'NotSoSecurePa$$'):
+        raise HTTPException(status_code=401)
 
-@app.delete("/method")
-def root(request: Request):
-    method = request.method
-    return {"method": f"{method}"}
+    response.set_cookie(key="session_token", value="1234321")
+    return
 
-@app.post("/method", status_code=201)
-def root(request: Request):
-    method = request.method
-    return {"method": f"{method}"}
 
-@app.get("/auth", status_code=401)
-def root(response: Response, password: Optional[str] = "", password_hash: Optional[str] = ""):
-    m = hashlib.sha512()
+@app.post("/login_token", status_code=201)
+def login_token(*, response: Response, credentials: HTTPBasicCredentials = Depends(security)):
+    if not (credentials.username == '4dm1n' and credentials.password == 'NotSoSecurePa$$'):
+        raise HTTPException(status_code=401)
 
-    if password == "" or password_hash == "":
-        response.status_code = 401
-        return
+    return {"token": "1234"}
 
-    m.update(bytes(f"{password}", encoding="utf-8"))
 
-    if password_hash == m.hexdigest():
-        response.status_code = 204
-        return
+@app.get("/welcome_session")
+def welcome_session(*, request: Request, session_token: str = Cookie(None)):
+    if not (str(session_token) in app.token1):
+        raise HTTPException(status_code=401)
+    if str(request.query_params.get("format")) == "json":
+        return JSONResponse(content={"message": "Welcome!"})
+    elif str(request.query_params.get("format")) == "html":
+        return HTMLResponse(content="<h1>Welcome!</h1>")
     else:
-        return
+        return PlainTextResponse(content="Welcome!")
 
-@app.post("/register", status_code= 201)
-def root(json_all: dict, response: Response):
-    name = json_all.get("name")
-    surname = json_all.get("surname")
 
-    if name is None or surname is None:
-        response.status_code = 422
-        return
-
-    app.counter += 1
-    start_date = datetime.datetime.today()
-    end_date = start_date + datetime.timedelta(days=sum(map(str.isalpha, str(name + surname))))
-    start_date = start_date.strftime('%Y-%m-%d')
-    end_date = end_date.strftime('%Y-%m-%d')
-    json_new = {"id": app.counter, "name": name,
-            "surname": surname, "register_date": start_date, "vaccination_date": end_date}
-    app.data[app.counter] = json_new
-    return json_new
-
-@app.get("/patient/{id}", status_code= 200)
-def root(id: int, response: Response):
-    if id < 1:
-        response.status_code = 400
-        return
-    if id in app.data:
-        return app.data.get(id)
+@app.get("/welcome_token")
+def welcome_token(format: Optional[str] = "", token: Optional[str] = ""):
+    if not (str(token) in app.token2):
+        raise HTTPException(status_code=401)
+    if format == "json":
+        return JSONResponse(content={"message": "Welcome!"})
+    elif format == "html":
+        return HTMLResponse(content="<h1>Welcome!</h1>")
     else:
-        response.status_code = 404
-        return
+        return PlainTextResponse(content="Welcome!")
 
+
+@app.delete("/logout_session")
+def logout_session(format: Optional[str] = "", session_token: str = Cookie(None)):
+    if not (str(session_token) in app.token1):
+        raise HTTPException(status_code=401)
+    while session_token in app.token1: app.token1.remove(session_token)
+    return RedirectResponse("/logged_out?format=" + format, status_code=303)
+
+
+@app.delete("/logout_token")
+def logout_token(token: Optional[str], format: Optional[str] = ""):
+    if not (str(token) in app.token2):
+        raise HTTPException(status_code=401)
+    while token in app.token2: app.token2.remove(token)
+    return RedirectResponse("/logged_out?format=" + format, status_code=303)
+
+
+@app.get("/logged_out")
+def logged_out(format: Optional[str] = ""):
+    if format == "json":
+        return JSONResponse(content={"message": "Logged out!"})
+    elif format == "html":
+        return HTMLResponse(content="<h1>Logged out!</h1>")
+    else:
+        return PlainTextResponse(content="Logged out!")
