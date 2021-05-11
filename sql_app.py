@@ -5,7 +5,7 @@ app = FastAPI()
 
 
 @app.get("/categories", status_code=200)
-def categories():
+async def categories():
     with sqlite3.connect("northwind.db") as connection:
         connection.text_factory = lambda b: b.decode(errors="ignore")
         cursor = connection.cursor()
@@ -18,7 +18,7 @@ def categories():
 
 
 @app.get("/products/{id}", status_code=200)
-def products(id: int):
+async def products(id: int):
     with sqlite3.connect("northwind.db") as connection:
         connection.text_factory = lambda b: b.decode(errors="ignore")
         cursor = connection.cursor()
@@ -30,7 +30,7 @@ def products(id: int):
 
 
 @app.get("/employees", status_code=200)
-def employees(limit: int = float("inf"), offset: int = 0, order: str = "id"):
+async def employees(limit: int = float("inf"), offset: int = 0, order: str = "id"):
 
     if order not in ["EmployeeID, LastName, FirstName, City"]:
         raise HTTPException(status_code=400)
@@ -50,7 +50,7 @@ def employees(limit: int = float("inf"), offset: int = 0, order: str = "id"):
 
 
 @app.get("/products_extended", status_code=200)
-def products():
+async def products():
     with sqlite3.connect("northwind.db") as connection:
         connection.text_factory = lambda b: b.decode(errors="ignore")
         cursor = connection.cursor()
@@ -66,7 +66,7 @@ def products():
 
 
 @app.get("/products/{id}/orders", status_code=200)
-def orders(id: int):
+async def orders(id: int):
     with sqlite3.connect("northwind.db") as connection:
         connection.text_factory = lambda b: b.decode(errors="ignore")
         cursor = connection.cursor()
