@@ -19,26 +19,26 @@ async def root():
     return {"sqlite3_library_version": sqlite3.version, "sqlite_version": sqlite3.sqlite_version}
 
 
-@app.get("/categories", status_code=200)
+@app.get("/categories")
 async def categories():
-    category = app.db_connection.execute("SELECT CategoryID as id, CategoryName as name FROM Categories ORDER BY id").fetchall()
-
+    category = app.db_connection.execute("SELECT CategoryID as id, CategoryName as name FROM Categories ORDER BY id")
     result = []
     for el in category:
         result.append({"id": el[0], "name": el[1]})
     return {"categories": result}
 
 
-@app.get("/products/{id}", status_code=200)
+@app.get("/products/{id}")
 async def products(id: int):
         category = app.db_connection.execute(
-            "SELECT ProductID as id, ProductName as name FROM Products WHERE ProductId = id", (id, )).fetchall()
-        if category is None or len(category) == 0:
+            "SELECT ProductID as id, ProductName as name FROM Products WHERE ProductId = ?", (id, )).fetchall()
+        if category is None:
             raise HTTPException(status_code=404)
         return {"id" : category[0], "name": category[1]}
 
 
-@app.get("/employees", status_code=200)
+
+@app.get("/employees")
 async def employees(limit: int = float("inf"), offset: int = 0, order: str = "id"):
 
     if order not in ["EmployeeID, LastName, FirstName, City"]:
@@ -49,8 +49,8 @@ async def employees(limit: int = float("inf"), offset: int = 0, order: str = "id
         cursor = connection.cursor()
         employee = cursor.execute(
             "SELECT EmployeeID as id, LastName as last_name, FirstName as first_name, "
-            "City as city FROM Employees LIMIT limit ORDER BY order",
-            (limit, offset, order)).fetchall()
+            "City as city FROM Employees LIMIT ? ORDER BY ? OFFSET ?",
+            (limit, order, offset)).fetchall()
 
     result = []
     for el in employee:
@@ -58,7 +58,7 @@ async def employees(limit: int = float("inf"), offset: int = 0, order: str = "id
     return {"employees": result}
 
 
-@app.get("/products_extended", status_code=200)
+@app.get("/products_extended")
 async def products():
     with sqlite3.connect("northwind.db") as connection:
         connection.text_factory = lambda b: b.decode(errors="ignore")
@@ -67,7 +67,7 @@ async def products():
                                   "CategoryName as category, CompanyName as supplier "
                                   "FROM Products products"
                                   "JOIN Categories categories ON products.CategoryID=categories.CategotyID"
-                                  "JOIN Suppliers suppliers ON suppliers.SupplierID=products.SupplierID").fetchall()
+                                  "JOIN Suppliers suppliers ON suppliers.SupplierID=products.SupplierID")
         result = []
         for el in employee:
             result.append({"id": el[0], "name": el[1], "category": el[2], "supplier": el[3]})
@@ -84,7 +84,7 @@ async def orders(id: int):
                                   "FROM Orders orders"
                                   "JOIN Customers customers ON orders.CustomerID=customers.CustomerID"
                                   "JOIN [Order Details] order_details ON order_details.OrderID=orders.OrderID"
-                                  "WHERE ProductID=id", (id, )).fetchall()
+                                  "WHERE ProductID=?", (id, )).fetchall()
     if orders is None or len(orders) == 0:
         raise HTTPException(status_code=404)
     result = []
