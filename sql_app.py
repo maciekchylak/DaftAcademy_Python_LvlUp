@@ -100,3 +100,18 @@ async def products_orders(id: int):
     return {"orders": [{"id": row[0], "customer": row[1], "quantity": row[2], "total_price": row[3]} for row in
                        products_orders]}
 
+@app.delete("/categories/{id}")
+async def delete_categories(id: int):
+    pass
+
+@app.put("/categories/{id}")
+async def put_categories(id: int, category: Category):
+    pass
+
+@app.post("/categories", status_code=201)
+async def post_categories(category: Category):
+    pass
+
+@app.get("/categories")
+async def categories():
+    pass
