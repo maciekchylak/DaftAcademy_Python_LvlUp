@@ -36,7 +36,11 @@ async def categories():
 
 @app.get("/customers")
 async def customers():
-    pass
+    customers = app.db_connection.execute('''Select CustomerID AS id, CompanyName AS name, COALESCE(Address,''), COALESCE(PostalCode,''), COALESCE(City,''), COALESCE(Country,'')
+                                             FROM Customers
+                                             ORDER BY id COLLATE NOCASE
+                                             ''')
+    return {"customers": [{"id": row[0], "name": row[1], "full_address": "{} {} {} {}".format(row[2], row[3], row[4], row[5])} for row in customers]}
 
 
 @app.get("/products/{id}")
@@ -103,15 +107,60 @@ async def products_orders(id: int):
     return {"orders": [{"id": row[0], "customer": row[1], "quantity": row[2], "total_price": row[3]} for row in
                        products_orders]}
 
-@app.delete("/categories/{id}")
-async def delete_categories(id: int):
-    pass
-
-@app.put("/categories/{id}")
-async def put_categories(id: int, category: Category):
-    pass
 
 @app.post("/categories", status_code=201)
 async def post_categories(category: Category):
-    pass
+    app.db_connection.execute('''
+                                INSERT INTO Categories (CategoryName)
+                                VALUES (:name)
+                                ''', {"name": category.name})
 
+    inserted_record = app.db_connection.execute('''
+                                                   SELECT CategoryID, CategoryName
+                                                   FROM Categories
+                                                   ORDER BY CategoryID DESC
+                                                   LIMIT 1
+                                                ''').fetchone()
+
+    return {"id": inserted_record[0], "name": inserted_record[1]}
+
+
+@app.put("/categories/{id}")
+async def put_categories(id: int, category: Category):
+    cursor = app.db_connection.cursor()
+    cursor.execute('''
+                      UPDATE Categories
+                      SET CategoryName = :name
+                      WHERE CategoryID = :id
+                   ''', {"name": category.name, "id": id})
+
+    cursor.row_factory = sqlite3.Row
+
+    updated_record = cursor.execute('''
+                                       SELECT *
+                                       FROM Categories
+                                       WHERE CategoryID = :id
+                                    ''', {"id": id}).fetchone()
+
+    if updated_record is None or len(updated_record) == 0:
+        raise HTTPException(status_code=404)
+
+    return {"id": updated_record["CategoryID"], "name": updated_record["CategoryName"]}
+
+
+@app.delete("/categories/{id}")
+async def delete_categories(id: int):
+    deleted_record = app.db_connection.execute('''
+                                                  SELECT *
+                                                  FROM Categories
+                                                  WHERE CategoryID = :id
+                                               ''', {"id": id}).fetchone()
+
+    if deleted_record is None or len(deleted_record) == 0:
+        raise HTTPException(status_code=404)
+
+    app.db_connection.execute('''
+                                 DELETE FROM Categories
+                                 WHERE CategoryID = :id
+                              ''', {"id": id})
+    return {"deleted": 1}
