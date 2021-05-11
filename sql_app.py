@@ -72,13 +72,13 @@ async def products():
 
 @app.get("/products/{id}/orders", status_code=200)
 async def orders(id: int):
-    orders = app.db_connection.execute('''SELECT o.OrderID AS id, c.CompanyName AS customer, od.Quantity, ROUND((od.UnitPrice * od.Quantity) - (od.Discount * (od.UnitPrice * od.Quantity)), 2) AS total_price
-                                                   FROM Orders AS o
-                                                   JOIN Customers AS c
-                                                   ON o.CustomerID = c.CustomerID
-                                                   JOIN "Order Details" as od
-                                                   ON o.OrderID = od.OrderID
-                                                   WHERE od.ProductID = :id                                                                                                
+    orders = app.db_connection.execute('''SELECT orders.OrderID AS id, customers.CompanyName AS customer, orderdetails.Quantity, ROUND((orderdetails.UnitPrice * orderdetails.Quantity) - (orderdetails.Discount * (orderdetails.UnitPrice * orderdetails.Quantity)), 2) AS total_price
+                                                   FROM Orders AS orders
+                                                   JOIN Customers AS customers
+                                                   ON orders.CustomerID = customers.CustomerID
+                                                   JOIN "Order Details" as orderdetails
+                                                   ON orders.OrderID = orderdetails.OrderID
+                                                   WHERE orderdetails.ProductID = :id                                                                                                
                                                    ''', {"id": id}).fetchone()
     if orders is None:
         raise HTTPException(status_code=404)
@@ -86,4 +86,4 @@ async def orders(id: int):
     result = []
     for el in orders:
         result.append({"id": el[0], "customer": el[1], "quantity": el[2], "total_price": el[3]})
-    return {"products_extended": result}
+    return {"orders": result}
