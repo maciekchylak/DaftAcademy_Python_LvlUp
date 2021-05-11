@@ -14,7 +14,7 @@ def categories():
     result = []
     for el in category:
         result.append({"id": el[0], "name": el[1]})
-    return {"category": result}
+    return {"categories": result}
 
 
 @app.get("/products/{id}", status_code=200)
