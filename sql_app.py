@@ -3,13 +3,25 @@ import sqlite3
 
 app = FastAPI()
 
+@app.on_event("startup")
+async def startup():
+    app.db_connection = sqlite3.connect("northwind.db")
+    app.db_connection.text_factory = lambda b: b.decode(errors="ignore")  # northwind specific
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    app.db_connection.close()
+
+
+@app.get("/")
+async def root():
+    return {"sqlite3_library_version": sqlite3.version, "sqlite_version": sqlite3.sqlite_version}
+
 
 @app.get("/categories", status_code=200)
 async def categories():
-    with sqlite3.connect("northwind.db") as connection:
-        connection.text_factory = lambda b: b.decode(errors="ignore")
-        cursor = connection.cursor()
-        category = cursor.execute("SELECT CategoryID as id, CategoryName as name FROM Categories ORDER BY id").fetchall()
+    category = app.db_connection.execute("SELECT CategoryID as id, CategoryName as name FROM Categories ORDER BY id").fetchall()
 
     result = []
     for el in category:
@@ -19,10 +31,7 @@ async def categories():
 
 @app.get("/products/{id}", status_code=200)
 async def products(id: int):
-    with sqlite3.connect("northwind.db") as connection:
-        connection.text_factory = lambda b: b.decode(errors="ignore")
-        cursor = connection.cursor()
-        category = cursor.execute(
+        category = app.db_connection.execute(
             "SELECT ProductID as id, ProductName as name FROM Products WHERE ProductId = id", (id, )).fetchall()
         if category is None or len(category) == 0:
             raise HTTPException(status_code=404)
