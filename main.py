@@ -66,12 +66,9 @@ async def suppliers_id_products(id: int):
 
     if suppliers is None or len(suppliers) == 0:
         raise HTTPException(status_code=404)
-    return suppliers
-    result = []
-    for el in suppliers:
-        result.append({"ProductID": el[0], "ProductName": el[1], "Category": {"CategoryID": el[2], "CategoryName": el[3]},
-                       "Discontinued": int(el[4])})
-    return result
+    return [{"ProductID": el[0], "ProductName": el[1], "Category": {"CategoryID": el[2], "CategoryName": el[3]},
+             "Discontinued": int(el[4])} for el in suppliers]
+
 
 @app.post("/suppliers", status_code=201)
 async def suppliers_insert(jsonn: dict):
