@@ -9,7 +9,7 @@ async def startup():
     app.db_connection = sqlite3.connect("northwind.db")
     def pom(b: str):
         b = b.decode(encoding="latin1")
-        b = b.replace("\n", "")
+        b = b.replace("\n", " ")
         if len(b) > 0:
             while b[-1] == " ":
                 b = b[:-1]
@@ -70,14 +70,16 @@ async def suppliers_id_products(id: int):
     result = []
     for el in suppliers:
         result.append({"ProductID": el[0], "ProductName": el[1], "Category": {"CategoryID": el[2], "CategoryName": el[3]},
-                       "Discontinued": el[4]})
+                       "Discontinued": int(el[4])})
     return result
 
 @app.post("/suppliers", status_code=201)
 async def suppliers_insert(jsonn: dict):
+    for atribute in jsonn.__fields__:
+        if atribute == "":
+            atribute = None
 
-
-    suppliers= app.db_connection.execute('''INSERT INTO Suppliers 
+    app.db_connection.execute('''INSERT INTO Suppliers 
     (CompanyName, ContactName, ContactTitle, Address, City, PostalCode, Country, 
     Phone, Fax, HomePage) VALUES (:CompanyName, 'abc', 'abc', 'asd', 'dsad', '83-110', 'country', '696-123-421', :a, :b)
                                               ''', {'CompanyName': jsonn["CompanyName"], 'a': None, 'b': None}).fetchall()
@@ -102,6 +104,4 @@ async def suppliers_post(id: int, jsonn: dict):
     return dict(app.db_connection.execute('''SELECT *
                                   FROM Suppliers
                                   WHERE SupplierID = :id ''', {'id': id}).fetchall())
-
-
 
