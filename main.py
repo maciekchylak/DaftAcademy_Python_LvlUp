@@ -14,7 +14,7 @@ async def startup():
             while b[-1] == " ":
                 b = b[:-1]
         return b
-    app.db_connection.text_factory = pom # northwind specific
+    app.db_connection.text_factory = pom
 
 
 @app.on_event("shutdown")
@@ -105,12 +105,11 @@ async def suppliers_post(id: int, jsonn: dict):
 
 @app.delete("/suppliers/{id}", status_code=204)
 async def delete(id: int):
-
     cursor = app.db_connection.cursor()
     cursor.row_factory = sqlite3.Row
-    suppliers = cursor.execute('''SELECT * FROM Suppliers WHERE SupplierID = :id''', {"id": id}).fetchall()
+    row = cursor.execute('''SELECT * FROM Suppliers WHERE SupplierID = :id''', {"id": id}).fetchone()
 
-    if suppliers is None or len(suppliers) == 0:
+    if row is None or len(row) == 0:
         raise HTTPException(status_code=404)
 
     cursor.execute("DELETE FROM Suppliers WHERE SupplierID = :id", {"id": id})
