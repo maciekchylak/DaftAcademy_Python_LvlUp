@@ -1,86 +1,92 @@
-from datetime import datetime
-
-from fastapi import FastAPI, Response, Request, Depends, HTTPException, Cookie
-from fastapi.responses import HTMLResponse, PlainTextResponse, JSONResponse, RedirectResponse
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from typing import Optional
-
+import sqlite3
+from fastapi import FastAPI, HTTPException
 
 
 app = FastAPI()
-app.token1 = []
-app.token2 = []
 
-security = HTTPBasic()
-
-
-@app.get("/hello", response_class=HTMLResponse)
-def hello():
-    return f'<h1>Hello! Today date is {str(datetime.today().strftime("%Y-%m-%d"))} </h1>'
+@app.on_event("startup")
+async def startup():
+    app.db_connection = sqlite3.connect("northwind.db")
+    app.db_connection.text_factory = lambda b: b.decode(errors="ignore")  # northwind specific
 
 
-@app.post("/login_session", status_code=201)
-def login_session(*, response: Response, credentials: HTTPBasicCredentials = Depends(security)):
-    if not (credentials.username == '4dm1n' and credentials.password == 'NotSoSecurePa$$'):
-        raise HTTPException(status_code=401)
-
-    response.set_cookie(key="session_token", value="1234321")
-    return
+@app.on_event("shutdown")
+async def shutdown():
+    app.db_connection.close()
 
 
-@app.post("/login_token", status_code=201)
-def login_token(*, response: Response, credentials: HTTPBasicCredentials = Depends(security)):
-    if not (credentials.username == '4dm1n' and credentials.password == 'NotSoSecurePa$$'):
-        raise HTTPException(status_code=401)
+@app.get("/suppliers", status_code=200)
+async def suppliers():
+    suppliers= app.db_connection.execute('''SELECT SupplierID, CompanyName FROM Suppliers
+                                            ORDER BY SupplierID
+                                              ''')
 
-    return {"token": "1234"}
-
-
-@app.get("/welcome_session")
-def welcome_session(*, request: Request, session_token: str = Cookie(None)):
-    if not (str(session_token) in app.token1):
-        raise HTTPException(status_code=401)
-    if str(request.query_params.get("format")) == "json":
-        return JSONResponse(content={"message": "Welcome!"})
-    elif str(request.query_params.get("format")) == "html":
-        return HTMLResponse(content="<h1>Welcome!</h1>")
-    else:
-        return PlainTextResponse(content="Welcome!")
+    result = []
+    for el in suppliers:
+        result.append({"SupplierID": el[0], "CompanyName": el[1]})
+    return result
 
 
-@app.get("/welcome_token")
-def welcome_token(format: Optional[str] = "", token: Optional[str] = ""):
-    if not (str(token) in app.token2):
-        raise HTTPException(status_code=401)
-    if format == "json":
-        return JSONResponse(content={"message": "Welcome!"})
-    elif format == "html":
-        return HTMLResponse(content="<h1>Welcome!</h1>")
-    else:
-        return PlainTextResponse(content="Welcome!")
+@app.get("/suppliers/{id}", status_code=200)
+async def suppliers_id(id: int):
+    suppliers= app.db_connection.execute('''SELECT *
+                                             FROM Suppliers
+                                             WHERE SupplierID = :id
+                                             ''', {'id' : id}).fetchall()
+
+    if suppliers is None or len(suppliers) == 0:
+        raise HTTPException(status_code=404)
+    return suppliers
+
+@app.get("/suppliers/{id}/products", status_code=200)
+async def suppliers_id_products(id: int):
+    suppliers= app.db_connection.execute('''SELECT prod.ProductID, prod.ProductName, 
+                                cat.CategoryID, cat.CategoryName, prod.Discontinued
+                                             FROM Products AS prod
+                                             JOIN Categories AS cat
+                                             ON prod.CategoryID = cat.CategoryID
+                                             WHERE SupplierID = :id
+                                             ORDER BY ProductID DESC
+                                             ''', {'id' : id}).fetchall()
+
+    if suppliers is None or len(suppliers) == 0:
+        raise HTTPException(status_code=404)
+    return suppliers
+    result = []
+    for el in suppliers:
+        result.append({"ProductID": el[0], "ProductName": el[1], "Category": {"CategoryID": el[2], "CategoryName": el[3]},
+                       "Discontinued": el[4]})
+    return result
+
+@app.post("/suppliers", status_code=201)
+async def suppliers_insert(jsonn: dict):
 
 
-@app.delete("/logout_session")
-def logout_session(format: Optional[str] = "", session_token: str = Cookie(None)):
-    if not (str(session_token) in app.token1):
-        raise HTTPException(status_code=401)
-    while session_token in app.token1: app.token1.remove(session_token)
-    return RedirectResponse("/logged_out?format=" + format, status_code=303)
+    suppliers= app.db_connection.execute('''INSERT INTO Suppliers 
+    (CompanyName, ContactName, ContactTitle, Address, City, PostalCode, Country, 
+    Phone, Fax, HomePage) VALUES (:CompanyName, 'abc', 'abc', 'asd', 'dsad', '83-110', 'country', '696-123-421', :a, :b)
+                                              ''', {'CompanyName': jsonn["CompanyName"], 'a': None, 'b': None}).fetchall()
+
+    return dict(app.db_connection.execute('''SELECT *
+                                  FROM Suppliers
+                                  ORDER BY SupplierID DESC
+                                  LIMIT 1 '''))
+
+@app.put("/suppliers{id}", status_code=200)
+async def suppliers_post(id: int, jsonn: dict):
+
+    suppliers = app.db_connection.execute('''SELECT *
+                                             FROM Suppliers
+                                             WHERE SupplierID = :id
+                                             ''', {'id': id}).fetchall()
+    if suppliers is None or len(suppliers) == 0:
+        raise HTTPException(status_code=404)
+
+    app.db_connection.execute('''UPDATE Suppliers SET CompanyName = :company, ContactName = :contact WHERE SupplierID = :id
+                                                 ''', {'company': jsonn["CompanyName"],'contact': jsonn["ContactName"], 'id': id}).fetchall()
+    return dict(app.db_connection.execute('''SELECT *
+                                  FROM Suppliers
+                                  WHERE SupplierID = :id ''', {'id': id}).fetchall())
 
 
-@app.delete("/logout_token")
-def logout_token(token: Optional[str], format: Optional[str] = ""):
-    if not (str(token) in app.token2):
-        raise HTTPException(status_code=401)
-    while token in app.token2: app.token2.remove(token)
-    return RedirectResponse("/logged_out?format=" + format, status_code=303)
 
-
-@app.get("/logged_out")
-def logged_out(format: Optional[str] = ""):
-    if format == "json":
-        return JSONResponse(content={"message": "Logged out!"})
-    elif format == "html":
-        return HTMLResponse(content="<h1>Logged out!</h1>")
-    else:
-        return PlainTextResponse(content="Logged out!")
