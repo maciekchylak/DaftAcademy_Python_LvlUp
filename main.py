@@ -70,38 +70,6 @@ async def suppliers_id_products(id: int):
              "Discontinued": int(el[2])} for el in suppliers]
 
 
-@app.post("/suppliers", status_code=201)
-async def suppliers_insert(jsonn: dict):
-    for atribute in jsonn.__fields__:
-        if atribute == "":
-            atribute = None
-
-    app.db_connection.execute('''INSERT INTO Suppliers 
-    (CompanyName, ContactName, ContactTitle, Address, City, PostalCode, Country, 
-    Phone, Fax, HomePage) VALUES (:CompanyName, 'abc', 'abc', 'asd', 'dsad', '83-110', 'country', '696-123-421', :a, :b)
-                                              ''', {'CompanyName': jsonn["CompanyName"], 'a': None, 'b': None}).fetchall()
-
-    return dict(app.db_connection.execute('''SELECT *
-                                  FROM Suppliers
-                                  ORDER BY SupplierID DESC
-                                  LIMIT 1 '''))
-
-@app.put("/suppliers{id}", status_code=200)
-async def suppliers_post(id: int, jsonn: dict):
-
-    suppliers = app.db_connection.execute('''SELECT *
-                                             FROM Suppliers
-                                             WHERE SupplierID = :id
-                                             ''', {'id': id}).fetchall()
-    if suppliers is None or len(suppliers) == 0:
-        raise HTTPException(status_code=404)
-
-    app.db_connection.execute('''UPDATE Suppliers SET CompanyName = :company, ContactName = :contact WHERE SupplierID = :id
-                                                 ''', {'company': jsonn["CompanyName"],'contact': jsonn["ContactName"], 'id': id}).fetchall()
-    return dict(app.db_connection.execute('''SELECT *
-                                  FROM Suppliers
-                                  WHERE SupplierID = :id ''', {'id': id}).fetchall())
-
 
 @app.delete("/suppliers/{id}", status_code=204)
 async def delete(id: int):
