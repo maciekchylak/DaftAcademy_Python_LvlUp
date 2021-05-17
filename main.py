@@ -7,7 +7,7 @@ app = FastAPI()
 @app.on_event("startup")
 async def startup():
     app.db_connection = sqlite3.connect("northwind.db")
-    app.db_connection.text_factory = lambda b: b.decode(errors="ignore")  # northwind specific
+    app.db_connection.text_factory = lambda b: b.decode(errors="latin1")  # northwind specific
 
 
 @app.on_event("shutdown")
