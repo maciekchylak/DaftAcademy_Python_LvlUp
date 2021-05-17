@@ -78,13 +78,17 @@ async def suppliers_insert(jsonn: dict):
 
     app.db_connection.execute('''INSERT INTO Suppliers 
     (CompanyName, ContactName, ContactTitle, Address, City, PostalCode, Country, 
-    Phone, Fax, HomePage) VALUES (:CompanyName, 'abc', 'abc', 'asd', 'dsad', '83-110', 'country', '696-123-421', :a, :b)
-                                              ''', {'CompanyName': jsonn["CompanyName"], 'a': None, 'b': None}).fetchall()
-
-    return dict(app.db_connection.execute('''SELECT *
-                                  FROM Suppliers
-                                  ORDER BY SupplierID DESC
-                                  LIMIT 1 '''))
+    Phone) VALUES (:CompanyName, 'abc', 'abc', 'asd', 'dsad', '83-110', 'country', '696-123-421')
+                                              ''', {'CompanyName': jsonn["CompanyName"]}).fetchall()
+    suppliers = app.db_connection.execute('''SELECT *
+                                     FROM Suppliers
+                                     ORDER BY SupplierID DESC
+                                     LIMIT 1''').fetchone()
+    suppliers = dict(suppliers)
+    for key in suppliers:
+        if suppliers[key] == "":
+            suppliers[key] = None
+    return suppliers
 
 @app.put("/suppliers{id}", status_code=200)
 async def suppliers_post(id: int, jsonn: dict):
