@@ -36,7 +36,15 @@ async def suppliers_id(id: int):
 
     if suppliers is None or len(suppliers) == 0:
         raise HTTPException(status_code=404)
-    return suppliers
+
+    result = []
+    for el in suppliers:
+        for el1 in el:
+            result.append(el1)
+
+    return {"SupplierID": result[0], "CompanyName": result[1], "ContactName": result[2],
+            "ContactTitle": result[3], "Address": result[4], "City": result[5], "Region": result[6],
+            "PostalCode": result[7], "Country": result[8], "Phone": result[9], "Fax": result[10], "HomePage": result[11]}
 
 @app.get("/suppliers/{id}/products", status_code=200)
 async def suppliers_id_products(id: int):
