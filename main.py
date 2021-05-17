@@ -1,6 +1,4 @@
 import sqlite3
-from typing import Optional
-
 from fastapi import FastAPI, HTTPException
 
 
@@ -68,47 +66,25 @@ async def suppliers_id_products(id: int):
 
     if suppliers is None or len(suppliers) == 0:
         raise HTTPException(status_code=404)
-    return [{"ProductID": el[0], "ProductName": el[1], "Category": {"CategoryID": el[2], "CategoryName": el[3]},
-             "Discontinued": int(el[4])} for el in suppliers]
+    return [{"ProductID": el[0], "ProductName": el[1], "Category": {"CategoryID": el[3], "CategoryName": el[4]},
+             "Discontinued": int(el[2])} for el in suppliers]
 
-class Supplier(BaseModel):
-    CompanyName: str
-    ContactName: Optional[str] = ""
-    ContactTitle: Optional[str] = ""
-    Address: Optional[str] = ""
-    City: Optional[str] = ""
-    PostalCode: Optional[str] = ""
-    Country: Optional[str] = ""
-    Phone: Optional[str] = ""
 
 @app.post("/suppliers", status_code=201)
-async def post_suppliers(supplier: Supplier):
-    for atribute in supplier.__fields__:
+async def suppliers_insert(jsonn: dict):
+    for atribute in jsonn.__fields__:
         if atribute == "":
             atribute = None
-    app.db_connection.execute('''
-                                INSERT INTO Suppliers (CompanyName, ContactName, ContactTitle, Address, City, PostalCode, Country, Phone)
-                                VALUES (:CompanyName, :ContactName, :ContactTitle, :Address, :City, :PostalCode, :Country, :Phone)
-                                ''', {"CompanyName": supplier.CompanyName, "ContactName": supplier.ContactName,
-                                      "ContactTitle": supplier.ContactTitle,
-                                      "Address": supplier.Address, "City": supplier.City,
-                                      "PostalCode": supplier.PostalCode, "Country": supplier.Country,
-                                      "Phone": supplier.Phone})
 
-    cursor = app.db_connection.cursor()
-    cursor.row_factory = sqlite3.Row
-    suppliers = cursor.execute('''SELECT *
+    app.db_connection.execute('''INSERT INTO Suppliers 
+    (CompanyName, ContactName, ContactTitle, Address, City, PostalCode, Country, 
+    Phone, Fax, HomePage) VALUES (:CompanyName, 'abc', 'abc', 'asd', 'dsad', '83-110', 'country', '696-123-421', :a, :b)
+                                              ''', {'CompanyName': jsonn["CompanyName"], 'a': None, 'b': None}).fetchall()
+
+    return dict(app.db_connection.execute('''SELECT *
                                   FROM Suppliers
                                   ORDER BY SupplierID DESC
-                                  LIMIT 1''').fetchone()
-
-    suppliers = dict(suppliers)
-    for key in suppliers:
-        if suppliers[key] == "":
-            suppliers[key] = None
-
-    return suppliers
-
+                                  LIMIT 1 '''))
 
 @app.put("/suppliers{id}", status_code=200)
 async def suppliers_post(id: int, jsonn: dict):
@@ -126,3 +102,12 @@ async def suppliers_post(id: int, jsonn: dict):
                                   FROM Suppliers
                                   WHERE SupplierID = :id ''', {'id': id}).fetchall())
 
+@app.delete("/suppliers/{id}", status_code=204)
+async def delete(id: int):
+
+    suppliers = app.db_connection.execute('''SELECT * FROM Suppliers WHERE SupplierID = :id''', {"id": id}).fetchall()
+
+    if suppliers[0] is None or len(suppliers[0]) == 0:
+        raise HTTPException(status_code=404)
+
+    app.db_connection.execute("DELETE FROM Suppliers WHERE SupplierID = :id", {"id": id})
