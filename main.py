@@ -102,8 +102,10 @@ async def suppliers_post(id: int, jsonn: dict):
                                   FROM Suppliers
                                   WHERE SupplierID = :id ''', {'id': id}).fetchall())
 
+
 @app.delete("/suppliers/{id}", status_code=204)
 async def delete(id: int):
+
     cursor = app.db_connection.cursor()
     cursor.row_factory = sqlite3.Row
     suppliers = cursor.execute('''SELECT * FROM Suppliers WHERE SupplierID = :id''', {"id": id}).fetchall()
@@ -111,4 +113,4 @@ async def delete(id: int):
     if suppliers is None or len(suppliers) == 0:
         raise HTTPException(status_code=404)
 
-    cursor.db_connection.execute("DELETE FROM Suppliers WHERE SupplierID = :id", {"id": id})
+    cursor.execute("DELETE FROM Suppliers WHERE SupplierID = :id", {"id": id})
