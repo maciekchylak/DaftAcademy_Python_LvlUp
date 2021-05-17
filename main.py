@@ -7,7 +7,14 @@ app = FastAPI()
 @app.on_event("startup")
 async def startup():
     app.db_connection = sqlite3.connect("northwind.db")
-    app.db_connection.text_factory = lambda b: b.decode(encoding="latin1")  # northwind specific
+    def pom(b: str):
+        b = b.decode(encoding="latin1")
+        b = b.replace("\n", "")
+        if len(b) > 0:
+            while b[-1] == " ":
+                b = b[:-1]
+        return b
+    app.db_connection.text_factory = pom # northwind specific
 
 
 @app.on_event("shutdown")
